@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useCallback } from "react"
@@ -87,20 +88,21 @@ export function PhotoUpload() {
       setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, status: "uploading" as const } : f)))
 
       // Upload to Supabase Storage
-      const fileName = `${Date.now()}-${file.name}`
-      const { data: uploadData, error: uploadError } = await supabase.storage.from("photos").upload(fileName, file, {
-        onUploadProgress: (progress) => {
-          const percent = (progress.loaded / progress.total) * 100
-          setFiles((prev) => prev.map((f) => (f.id === file.id ? { ...f, progress: percent } : f)))
-        },
-      })
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("photos")
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        })
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        throw uploadError
+      }
 
       // Get public URL
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("photos").getPublicUrl(fileName)
+      const { data: { publicUrl } } = supabase.storage.from("photos").getPublicUrl(fileName)
 
       // Create photo record with all required fields
       await createPhoto.mutateAsync({
@@ -181,8 +183,8 @@ export function PhotoUpload() {
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
               <Select
-                value={metadata.categoryId}
-                onValueChange={(value) => setMetadata((prev) => ({ ...prev, categoryId: value }))}
+                value={metadata.categoryId || undefined}
+                onValueChange={(value) => setMetadata((prev) => ({ ...prev, categoryId: value || "" }))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a category" />

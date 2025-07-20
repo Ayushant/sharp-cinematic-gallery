@@ -1,8 +1,9 @@
+
 import { createClient } from '@supabase/supabase-js'
 
-// Supabase configuration - using environment variables with fallbacks
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://qgmunwngguifwjruhzjx.supabase.co'
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnbXVud25nZ3VpZndqcnVoemp4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI5MTUyMTMsImV4cCI6MjA2ODQ5MTIxM30.XOLO0QOMjJPpITpEbACj2gnlJphfnSvcBFGAeU0CN_U'
+// Supabase configuration - using correct project details
+const supabaseUrl = 'https://wjbgxpkazsdldknulrhk.supabase.co'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqYmd4cGthenNkbGRrbnVscmhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI3NTUyMzAsImV4cCI6MjA2ODMzMTIzMH0.SU2CeYPbprat5tKe7VhV4mLERcavy4nOMKMeuXXFASI'
 
 // Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseKey)
