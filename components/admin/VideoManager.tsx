@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -22,13 +23,13 @@ import { useCategories } from "@/hooks/useCategories"
 
 const videoSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  description: z.string().optional().transform(val => val || null),
   youtube_url: z.string().url("Please enter a valid YouTube URL"),
   category_id: z.string().min(1, "Category is required"),
-  custom_thumbnail_url: z.string().url().optional().or(z.literal("")),
+  custom_thumbnail_url: z.string().url().optional().or(z.literal("")).transform(val => val || null),
   is_featured: z.boolean().default(false),
   is_home_featured: z.boolean().default(false),
-  home_display_section: z.enum(["hero", "top", "bottom"]).optional(),
+  home_display_section: z.enum(["hero", "top", "bottom"]).optional().transform(val => val || null),
 })
 
 type VideoForm = z.infer<typeof videoSchema>
@@ -50,9 +51,13 @@ export function VideoManager() {
     formState: { errors, isSubmitting },
   } = useForm<VideoForm>({
     resolver: zodResolver(videoSchema),
+    defaultValues: {
+      is_featured: false,
+      is_home_featured: false,
+    },
   })
 
-  const watchedHomeSection = watch("home_display_section")
+  const watchedHomeSection = watch("is_home_featured")
 
   const onSubmit = async (data: VideoForm) => {
     try {
@@ -68,6 +73,7 @@ export function VideoManager() {
           youtube_id: extractYouTubeId(data.youtube_url) || "",
           display_order: 0,
           view_count: 0,
+          duration: null,
         })
         setIsCreateDialogOpen(false)
       }

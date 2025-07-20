@@ -1,158 +1,224 @@
+
 "use client"
 
 import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import Link from "next/link"
-import { Play, Eye } from "lucide-react"
+import { Play, Camera, Video } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { PhotoLightbox } from "@/components/gallery/PhotoLightbox"
-import { useFeaturedPhotos, useHomeFeaturedPhotos } from "@/hooks/usePhotos"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { AspectRatio } from "@/components/ui/aspect-ratio"
+import { usePhotos } from "@/hooks/usePhotos"
 import { useHomeVideos } from "@/hooks/useVideos"
+import { PhotoLightbox } from "@/components/gallery/PhotoLightbox"
+import { LoadingSpinner } from "@/components/common/LoadingSpinner"
 
-interface FeaturedGalleryProps {
-  section: "top" | "bottom"
-  title: string
-  description: string
+type MediaItem = {
+  type: "photo" | "video"
+  id: string
+  category_id: string
+  title: string | null
+  description: string | null
+  image_url?: string
+  thumbnail_url?: string | null
+  alt_text?: string | null
+  youtube_url?: string
+  youtube_id?: string
+  custom_thumbnail_url?: string | null
+  duration?: string | null
+  display_order: number
+  is_featured: boolean
+  is_home_featured: boolean
+  home_display_section: string | null
+  view_count?: number
+  created_at: string
+  updated_at: string
+  category_name?: string
 }
 
-export function FeaturedGallery({ section, title, description }: FeaturedGalleryProps) {
-  const [lightboxIndex, setLightboxIndex] = useState(-1)
+export function FeaturedGallery() {
+  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
+  const [lightboxIndex, setLightboxIndex] = useState(0)
 
-  // Get photos based on section
-  const { data: featuredPhotos } = useFeaturedPhotos()
-  const { data: homeFeaturedPhotos } = useHomeFeaturedPhotos(section === "bottom" ? "bottom" : undefined)
-  const { data: sectionVideos } = useHomeVideos(section)
+  const { data: featuredPhotos, isLoading: photosLoading } = usePhotos()
+  const { data: featuredVideos, isLoading: videosLoading } = useHomeVideos()
 
-  // Select the appropriate photos based on section
-  const sectionPhotos = section === "top" ? featuredPhotos || [] : homeFeaturedPhotos || []
+  const isLoading = photosLoading || videosLoading
 
-  // Combine photos and videos
-  const content = [
-    ...sectionPhotos.map((photo) => ({ ...photo, type: "photo" as const })),
-    ...(sectionVideos?.map((video) => ({ ...video, type: "video" as const })) || []),
-  ].slice(0, section === "top" ? 6 : 8)
+  // Combine and sort media items
+  const mediaItems: MediaItem[] = [
+    ...(featuredPhotos?.filter(photo => photo.is_home_featured).map(photo => ({
+      type: "photo" as const,
+      ...photo,
+    })) || []),
+    ...(featuredVideos?.map(video => ({
+      type: "video" as const,
+      ...video,
+    })) || []),
+  ].sort((a, b) => {
+    // Sort by display_order first, then by created_at
+    if (a.display_order !== b.display_order) {
+      return a.display_order - b.display_order
+    }
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  })
 
-  const handleItemClick = (index: number, item: any) => {
-    if (item.type === "video") {
-      window.open(item.youtube_url, "_blank")
-    } else {
+  const handleMediaClick = (media: MediaItem, index: number) => {
+    if (media.type === "photo") {
+      setSelectedMedia(media)
       setLightboxIndex(index)
+    } else if (media.type === "video" && media.youtube_url) {
+      window.open(media.youtube_url, "_blank")
     }
   }
 
-  if (!content.length) return null
+  const photoItems = mediaItems.filter(item => item.type === "photo")
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-16">
+        <LoadingSpinner size="lg" />
+      </div>
+    )
+  }
+
+  if (mediaItems.length === 0) {
+    return (
+      <div className="text-center py-16">
+        <Camera className="w-16 h-16 mx-auto text-gray-400 mb-4" />
+        <h3 className="text-xl font-semibold text-gray-600 mb-2">No featured content yet</h3>
+        <p className="text-gray-500">Featured photos and videos will appear here</p>
+      </div>
+    )
+  }
 
   return (
-    <section className="py-12 sm:py-16 lg:py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="text-center mb-8 sm:mb-12 lg:mb-16"
-        >
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-900 mb-3 sm:mb-4">{title}</h2>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto px-4">{description}</p>
-        </motion.div>
+    <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Gallery</h2>
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Discover our most captivating moments and stories
+          </p>
+        </div>
 
-        <div
-          className={`grid grid-cols-1 sm:grid-cols-2 ${section === "top" ? "lg:grid-cols-3" : "lg:grid-cols-4"} gap-4 sm:gap-6`}
-        >
-          {content.map((item, index) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {mediaItems.map((media, index) => (
             <motion.div
-              key={item.id}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: index * 0.1 }}
-              viewport={{ once: true }}
-              className="group cursor-pointer"
-              onClick={() => handleItemClick(index, item)}
+              key={`${media.type}-${media.id}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
             >
-              <div className="relative aspect-square overflow-hidden rounded-lg sm:rounded-xl bg-gray-100 shadow-md group-hover:shadow-xl transition-all duration-300">
-                <Image
-                  src={
-                    item.type === "video"
-                      ? item.custom_thumbnail_url || `https://img.youtube.com/vi/${item.youtube_id}/maxresdefault.jpg`
-                      : item.image_url || "/placeholder.svg"
-                  }
-                  alt={item.alt_text || item.title || "Content"}
-                  fill
-                  className="object-cover transition-transform duration-500 group-hover:scale-110"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                />
+              <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer">
+                <div 
+                  className="relative"
+                  onClick={() => handleMediaClick(media, photoItems.findIndex(p => p.id === media.id))}
+                >
+                  <AspectRatio ratio={4/3}>
+                    <Image
+                      src={
+                        media.type === "photo"
+                          ? media.image_url || "/placeholder.svg"
+                          : media.custom_thumbnail_url || 
+                            `https://img.youtube.com/vi/${media.youtube_id}/maxresdefault.jpg`
+                      }
+                      alt={media.type === "photo" ? (media.alt_text || media.title || "Photo") : (media.title || "Video")}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                  </AspectRatio>
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-                {/* Play button for videos */}
-                {item.type === "video" && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                      <Play className="w-6 h-6 sm:w-8 sm:h-8 text-white ml-1" />
-                    </div>
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                    <Button size="lg" variant="secondary" className="bg-white/90 text-gray-900">
+                      {media.type === "photo" ? (
+                        <>
+                          <Camera className="w-5 h-5 mr-2" />
+                          View Photo
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-5 h-5 mr-2" />
+                          Watch Video
+                        </>
+                      )}
+                    </Button>
                   </div>
-                )}
 
-                {/* View icon for photos */}
-                {item.type === "photo" && (
-                  <div className="absolute top-2 sm:top-4 right-2 sm:right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="w-6 h-6 sm:w-8 sm:h-8 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center">
-                      <Eye className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                    </div>
+                  {/* Media type badge */}
+                  <div className="absolute top-3 left-3">
+                    <Badge variant={media.type === "photo" ? "default" : "destructive"}>
+                      {media.type === "photo" ? (
+                        <>
+                          <Camera className="w-3 h-3 mr-1" />
+                          Photo
+                        </>
+                      ) : (
+                        <>
+                          <Video className="w-3 h-3 mr-1" />
+                          Video
+                        </>
+                      )}
+                    </Badge>
                   </div>
-                )}
 
-                {/* Content info */}
-                <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                  <h3 className="font-semibold text-sm sm:text-lg mb-1">{item.title || "Untitled"}</h3>
-                  {item.category_name && (
-                    <span className="inline-block px-2 py-1 bg-white/20 backdrop-blur-sm text-xs rounded-full">
-                      {item.category_name}
-                    </span>
+                  {/* Duration for videos */}
+                  {media.type === "video" && media.duration && (
+                    <div className="absolute bottom-3 right-3">
+                      <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {media.duration}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* View count for videos */}
+                  {media.type === "video" && media.view_count !== undefined && (
+                    <div className="absolute bottom-3 left-3">
+                      <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {media.view_count} views
+                      </span>
+                    </div>
                   )}
                 </div>
 
-                {/* Type badge */}
-                <div className="absolute top-2 sm:top-4 left-2 sm:left-4">
-                  <span
-                    className={`inline-block px-2 py-1 text-xs rounded-full font-medium ${
-                      item.type === "video" ? "bg-red-500 text-white" : "bg-blue-500 text-white"
-                    }`}
-                  >
-                    {item.type === "video" ? "Video" : "Photo"}
-                  </span>
-                </div>
-              </div>
+                <CardContent className="p-4">
+                  <div className="space-y-2">
+                    {media.title && (
+                      <h3 className="font-semibold text-lg line-clamp-1">{media.title}</h3>
+                    )}
+                    {media.description && (
+                      <p className="text-gray-600 text-sm line-clamp-2">{media.description}</p>
+                    )}
+                    {media.category_name && (
+                      <p className="text-xs text-purple-600 font-medium">{media.category_name}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </motion.div>
           ))}
         </div>
 
-        {/* View More Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          viewport={{ once: true }}
-          className="text-center mt-8 sm:mt-12"
-        >
-          <Button size="lg" variant="outline" className="border-gray-300 hover:bg-gray-50 bg-transparent" asChild>
-            <Link href="/portfolio">View Complete Portfolio</Link>
-          </Button>
-        </motion.div>
+        {/* Photo Lightbox */}
+        {selectedMedia && selectedMedia.type === "photo" && (
+          <PhotoLightbox
+            photos={photoItems.map(item => ({
+              id: item.id,
+              image_url: item.image_url!,
+              title: item.title,
+              description: item.description,
+              alt_text: item.alt_text || item.title || "Photo",
+              category_name: item.category_name,
+            }))}
+            currentIndex={lightboxIndex}
+            onClose={() => setSelectedMedia(null)}
+            onNavigate={setLightboxIndex}
+          />
+        )}
       </div>
-
-      {/* Lightbox for photos */}
-      {sectionPhotos.length > 0 && (
-        <PhotoLightbox
-          photos={sectionPhotos}
-          currentIndex={lightboxIndex}
-          isOpen={lightboxIndex >= 0}
-          onClose={() => setLightboxIndex(-1)}
-          onNavigate={setLightboxIndex}
-        />
-      )}
     </section>
   )
 }

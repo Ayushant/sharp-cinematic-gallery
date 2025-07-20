@@ -41,6 +41,7 @@
     "@supabase/supabase-js": "latest",
     "@tanstack/react-query": "latest",
     "@tanstack/react-query-devtools": "latest",
+    "@vitejs/plugin-react": "^4.7.0",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -58,11 +59,13 @@
     "react-dropzone": "latest",
     "react-hook-form": "latest",
     "react-resizable-panels": "latest",
+    "react-router-dom": "^7.7.0",
     "recharts": "latest",
     "sonner": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
+    "vite": "^7.0.5",
     "zod": "^3.24.1"
   },
   "devDependencies": {

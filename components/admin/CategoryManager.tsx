@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState } from "react"
@@ -21,7 +22,7 @@ import type { Category } from "@/lib/supabase"
 const categorySchema = z.object({
   name: z.string().min(1, "Category name is required"),
   slug: z.string().min(1, "Slug is required"),
-  description: z.string().optional(),
+  description: z.string().optional().transform(val => val || null),
 })
 
 type CategoryForm = z.infer<typeof categorySchema>

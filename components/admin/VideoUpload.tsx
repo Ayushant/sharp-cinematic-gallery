@@ -1,3 +1,4 @@
+
 "use client"
 
 import React from "react"
@@ -19,12 +20,12 @@ import { useVideoMutations } from "@/hooks/useVideos"
 
 const videoSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  description: z.string().optional().transform(val => val || null),
   youtube_url: z.string().url("Please enter a valid YouTube URL"),
   category_id: z.string().min(1, "Category is required"),
   is_featured: z.boolean().default(false),
   is_home_featured: z.boolean().default(false),
-  home_display_section: z.enum(["hero", "top", "bottom"]).optional(),
+  home_display_section: z.enum(["hero", "top", "bottom"]).optional().transform(val => val || null),
 })
 
 type VideoForm = z.infer<typeof videoSchema>
@@ -43,6 +44,10 @@ export function VideoUpload() {
     formState: { errors, isSubmitting },
   } = useForm<VideoForm>({
     resolver: zodResolver(videoSchema),
+    defaultValues: {
+      is_featured: false,
+      is_home_featured: false,
+    },
   })
 
   const watchedUrl = watch("youtube_url")
