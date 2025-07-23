@@ -84,7 +84,7 @@ export function VideoUpload() {
         view_count: 0,
         custom_thumbnail_url: null,
         duration: null,
-        home_display_section: data.is_home_featured ? data.home_display_section : null,
+        home_display_section: data.is_home_featured ? (data.home_display_section || null) : null,
       })
 
       reset()

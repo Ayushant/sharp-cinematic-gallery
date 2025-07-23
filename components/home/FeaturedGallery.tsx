@@ -4,229 +4,174 @@
 import { useState } from "react"
 import { motion } from "framer-motion"
 import Image from "next/image"
-import { Play, Camera, Video } from "lucide-react"
+import { Star, Calendar, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { AspectRatio } from "@/components/ui/aspect-ratio"
-import { usePhotos } from "@/hooks/usePhotos"
-import { useHomeVideos } from "@/hooks/useVideos"
 import { PhotoLightbox } from "@/components/gallery/PhotoLightbox"
 import { LoadingSpinner } from "@/components/common/LoadingSpinner"
+import { EmptyState } from "@/components/common/EmptyState"
+import { usePhotos } from "@/hooks/usePhotos"
+import type { Photo } from "@/lib/supabase"
 
-type MediaItem = {
-  type: "photo" | "video"
-  id: string
-  category_id: string
-  title: string | null
-  description: string | null
-  image_url?: string
-  thumbnail_url?: string | null
-  alt_text?: string | null
-  youtube_url?: string
-  youtube_id?: string
-  custom_thumbnail_url?: string | null
-  duration?: string | null
-  display_order: number
-  is_featured: boolean
-  is_home_featured: boolean
-  home_display_section: string | null
-  view_count?: number
-  created_at: string
-  updated_at: string
-  category_name?: string
+interface FeaturedGalleryProps {
+  section: string
+  title: string
+  description: string
 }
 
-type PhotoForLightbox = {
-  id: string
-  image_url: string
-  title: string | null
-  description: string | null
-  alt_text: string
-  category_name?: string
-}
+export function FeaturedGallery({ section, title, description }: FeaturedGalleryProps) {
+  const [lightboxIndex, setLightboxIndex] = useState<number>(-1)
+  const [viewMode, setViewMode] = useState<'grid' | 'masonry'>('grid')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
-export function FeaturedGallery() {
-  const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
-  const [lightboxIndex, setLightboxIndex] = useState(0)
+  const { data: photos, isLoading } = usePhotos(selectedCategory || undefined)
 
-  const { data: featuredPhotos, isLoading: photosLoading } = usePhotos()
-  const { data: featuredVideos, isLoading: videosLoading } = useHomeVideos()
+  // Filter photos based on section
+  const filteredPhotos = photos?.filter(photo => {
+    if (section === 'featured') return photo.is_featured
+    if (section === 'home') return photo.is_home_featured
+    return true
+  }) || []
 
-  const isLoading = photosLoading || videosLoading
-
-  // Combine and sort media items
-  const mediaItems: MediaItem[] = [
-    ...(featuredPhotos?.filter(photo => photo.is_home_featured).map(photo => ({
-      type: "photo" as const,
-      ...photo,
-    })) || []),
-    ...(featuredVideos?.map(video => ({
-      type: "video" as const,
-      ...video,
-    })) || []),
-  ].sort((a, b) => {
-    // Sort by display_order first, then by created_at
-    if (a.display_order !== b.display_order) {
-      return a.display_order - b.display_order
-    }
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  })
-
-  const handleMediaClick = (media: MediaItem, index: number) => {
-    if (media.type === "photo") {
-      setSelectedMedia(media)
-      setLightboxIndex(index)
-    } else if (media.type === "video" && media.youtube_url) {
-      window.open(media.youtube_url, "_blank")
-    }
+  const handlePhotoClick = (index: number) => {
+    setLightboxIndex(index)
   }
 
-  const photoItems: PhotoForLightbox[] = mediaItems
-    .filter(item => item.type === "photo")
-    .map(item => ({
-      id: item.id,
-      image_url: item.image_url!,
-      title: item.title,
-      description: item.description,
-      alt_text: item.alt_text || item.title || "Photo",
-      category_name: item.category_name,
-    }))
+  const handleCloseLightbox = () => {
+    setLightboxIndex(-1)
+  }
+
+  const handleNavigateLightbox = (index: number) => {
+    setLightboxIndex(index)
+  }
 
   if (isLoading) {
     return (
-      <div className="flex justify-center py-16">
-        <LoadingSpinner size="lg" />
-      </div>
-    )
-  }
-
-  if (mediaItems.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <Camera className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-        <h3 className="text-xl font-semibold text-gray-600 mb-2">No featured content yet</h3>
-        <p className="text-gray-500">Featured photos and videos will appear here</p>
+      <div className="container mx-auto px-4 py-16">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold mb-4">{title}</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">{description}</p>
+        </div>
+        <div className="flex justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
       </div>
     )
   }
 
   return (
-    <section className="py-16 bg-gradient-to-br from-purple-50 to-pink-50">
+    <section className="py-16 bg-white">
       <div className="container mx-auto px-4">
+        {/* Header */}
         <div className="text-center mb-12">
-          <h2 className="text-4xl font-bold text-gray-900 mb-4">Featured Gallery</h2>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Discover our most captivating moments and stories
-          </p>
+          <h2 className="text-3xl font-bold mb-4">{title}</h2>
+          <p className="text-gray-600 max-w-2xl mx-auto">{description}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {mediaItems.map((media, index) => (
-            <motion.div
-              key={`${media.type}-${media.id}`}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 cursor-pointer">
-                <div 
-                  className="relative"
-                  onClick={() => handleMediaClick(media, photoItems.findIndex(p => p.id === media.id))}
-                >
-                  <AspectRatio ratio={4/3}>
-                    <Image
-                      src={
-                        media.type === "photo"
-                          ? media.image_url || "/placeholder.svg"
-                          : media.custom_thumbnail_url || 
-                            `https://img.youtube.com/vi/${media.youtube_id}/maxresdefault.jpg`
-                      }
-                      alt={media.type === "photo" ? (media.alt_text || media.title || "Photo") : (media.title || "Video")}
-                      fill
-                      className="object-cover transition-transform duration-300 group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  </AspectRatio>
+        {/* Controls */}
+        <div className="flex justify-center gap-4 mb-8">
+          <Button
+            variant={viewMode === 'grid' ? 'default' : 'outline'}
+            onClick={() => setViewMode('grid')}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            Grid View
+          </Button>
+          <Button
+            variant={viewMode === 'masonry' ? 'default' : 'outline'}
+            onClick={() => setViewMode('masonry')}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            Masonry View
+          </Button>
+        </div>
 
+        {/* Gallery */}
+        {filteredPhotos.length > 0 ? (
+          <div className={`grid gap-6 ${
+            viewMode === 'grid' 
+              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          }`}>
+            {filteredPhotos.map((photo, index) => (
+              <motion.div
+                key={photo.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                className={`group cursor-pointer ${
+                  viewMode === 'masonry' ? 'break-inside-avoid' : ''
+                }`}
+                onClick={() => handlePhotoClick(index)}
+              >
+                <div className="relative overflow-hidden rounded-lg bg-gray-100 aspect-square">
+                  <Image
+                    src={photo.image_url || "/placeholder.svg"}
+                    alt={photo.alt_text || photo.title || "Photography"}
+                    fill
+                    className="object-cover transition-transform duration-300 group-hover:scale-105"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                  />
+                  
                   {/* Overlay */}
-                  <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                    <Button size="lg" variant="secondary" className="bg-white/90 text-gray-900">
-                      {media.type === "photo" ? (
-                        <>
-                          <Camera className="w-5 h-5 mr-2" />
-                          View Photo
-                        </>
-                      ) : (
-                        <>
-                          <Play className="w-5 h-5 mr-2" />
-                          Watch Video
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* Media type badge */}
-                  <div className="absolute top-3 left-3">
-                    <Badge variant={media.type === "photo" ? "default" : "destructive"}>
-                      {media.type === "photo" ? (
-                        <>
-                          <Camera className="w-3 h-3 mr-1" />
-                          Photo
-                        </>
-                      ) : (
-                        <>
-                          <Video className="w-3 h-3 mr-1" />
-                          Video
-                        </>
-                      )}
-                    </Badge>
-                  </div>
-
-                  {/* Duration for videos */}
-                  {media.type === "video" && media.duration && (
-                    <div className="absolute bottom-3 right-3">
-                      <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {media.duration}
-                      </span>
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-300" />
+                  
+                  {/* Featured badge */}
+                  {photo.is_featured && (
+                    <div className="absolute top-3 right-3 bg-yellow-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1">
+                      <Star className="w-3 h-3" />
+                      Featured
                     </div>
                   )}
-
-                  {/* View count for videos */}
-                  {media.type === "video" && media.view_count !== undefined && (
-                    <div className="absolute bottom-3 left-3">
-                      <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {media.view_count} views
-                      </span>
-                    </div>
-                  )}
+                  
+                  {/* Title overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <h3 className="text-white font-medium text-sm">{photo.title}</h3>
+                    {photo.description && (
+                      <p className="text-gray-300 text-xs mt-1 line-clamp-2">{photo.description}</p>
+                    )}
+                  </div>
                 </div>
-
-                <CardContent className="p-4">
-                  <div className="space-y-2">
-                    {media.title && (
-                      <h3 className="font-semibold text-lg line-clamp-1">{media.title}</h3>
-                    )}
-                    {media.description && (
-                      <p className="text-gray-600 text-sm line-clamp-2">{media.description}</p>
-                    )}
-                    {media.category_name && (
-                      <p className="text-xs text-purple-600 font-medium">{media.category_name}</p>
+                
+                {/* Photo info */}
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-medium text-sm truncate">{photo.title || 'Untitled'}</h3>
+                    {photo.category_name && (
+                      <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded-full">
+                        {photo.category_name}
+                      </span>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                  
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(photo.created_at).toLocaleDateString()}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Eye className="w-3 h-3" />
+                      {photo.is_home_featured ? 'Home' : 'Gallery'}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No photos found"
+            description="No featured photos have been added yet. Check back soon for amazing photography!"
+          />
+        )}
 
-        {/* Photo Lightbox */}
-        {selectedMedia && selectedMedia.type === "photo" && (
+        {/* Lightbox */}
+        {filteredPhotos.length > 0 && (
           <PhotoLightbox
-            photos={photoItems}
+            photos={filteredPhotos}
             currentIndex={lightboxIndex}
-            onClose={() => setSelectedMedia(null)}
-            onNavigate={setLightboxIndex}
+            isOpen={lightboxIndex >= 0}
+            onClose={handleCloseLightbox}
+            onNavigate={handleNavigateLightbox}
           />
         )}
       </div>
