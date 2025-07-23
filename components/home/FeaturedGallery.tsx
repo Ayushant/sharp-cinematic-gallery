@@ -37,6 +37,15 @@ type MediaItem = {
   category_name?: string
 }
 
+type PhotoForLightbox = {
+  id: string
+  image_url: string
+  title: string | null
+  description: string | null
+  alt_text: string
+  category_name?: string
+}
+
 export function FeaturedGallery() {
   const [selectedMedia, setSelectedMedia] = useState<MediaItem | null>(null)
   const [lightboxIndex, setLightboxIndex] = useState(0)
@@ -73,7 +82,16 @@ export function FeaturedGallery() {
     }
   }
 
-  const photoItems = mediaItems.filter(item => item.type === "photo")
+  const photoItems: PhotoForLightbox[] = mediaItems
+    .filter(item => item.type === "photo")
+    .map(item => ({
+      id: item.id,
+      image_url: item.image_url!,
+      title: item.title,
+      description: item.description,
+      alt_text: item.alt_text || item.title || "Photo",
+      category_name: item.category_name,
+    }))
 
   if (isLoading) {
     return (
@@ -205,14 +223,7 @@ export function FeaturedGallery() {
         {/* Photo Lightbox */}
         {selectedMedia && selectedMedia.type === "photo" && (
           <PhotoLightbox
-            photos={photoItems.map(item => ({
-              id: item.id,
-              image_url: item.image_url!,
-              title: item.title,
-              description: item.description,
-              alt_text: item.alt_text || item.title || "Photo",
-              category_name: item.category_name,
-            }))}
+            photos={photoItems}
             currentIndex={lightboxIndex}
             onClose={() => setSelectedMedia(null)}
             onNavigate={setLightboxIndex}

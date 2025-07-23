@@ -23,13 +23,13 @@ import { useCategories } from "@/hooks/useCategories"
 
 const videoSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional().transform(val => val || null),
+  description: z.string().optional(),
   youtube_url: z.string().url("Please enter a valid YouTube URL"),
   category_id: z.string().min(1, "Category is required"),
-  custom_thumbnail_url: z.string().url().optional().or(z.literal("")).transform(val => val || null),
+  custom_thumbnail_url: z.string().url().optional().or(z.literal("")),
   is_featured: z.boolean().default(false),
   is_home_featured: z.boolean().default(false),
-  home_display_section: z.enum(["hero", "top", "bottom"]).optional().transform(val => val || null),
+  home_display_section: z.enum(["hero", "top", "bottom"]).optional().nullable(),
 })
 
 type VideoForm = z.infer<typeof videoSchema>
@@ -54,6 +54,7 @@ export function VideoManager() {
     defaultValues: {
       is_featured: false,
       is_home_featured: false,
+      home_display_section: null,
     },
   })
 
@@ -61,15 +62,22 @@ export function VideoManager() {
 
   const onSubmit = async (data: VideoForm) => {
     try {
+      const videoData = {
+        ...data,
+        description: data.description || null,
+        custom_thumbnail_url: data.custom_thumbnail_url || null,
+        home_display_section: data.is_home_featured ? data.home_display_section : null,
+      }
+
       if (editingVideo) {
         await updateVideo.mutateAsync({
           id: editingVideo.id,
-          ...data,
+          ...videoData,
         })
         setEditingVideo(null)
       } else {
         await createVideo.mutateAsync({
-          ...data,
+          ...videoData,
           youtube_id: extractYouTubeId(data.youtube_url) || "",
           display_order: 0,
           view_count: 0,
@@ -92,7 +100,7 @@ export function VideoManager() {
     setValue("custom_thumbnail_url", video.custom_thumbnail_url || "")
     setValue("is_featured", video.is_featured)
     setValue("is_home_featured", video.is_home_featured)
-    setValue("home_display_section", video.home_display_section as any)
+    setValue("home_display_section", video.home_display_section as "hero" | "top" | "bottom" | null)
   }
 
   const handleDelete = async (videoId: string) => {
@@ -152,7 +160,7 @@ export function VideoManager() {
                   <Image
                     src={
                       video.custom_thumbnail_url ||
-                      `https://img.youtube.com/vi/${video.youtube_id || "/placeholder.svg"}/maxresdefault.jpg`
+                      `https://img.youtube.com/vi/${video.youtube_id}/maxresdefault.jpg`
                     }
                     alt={video.title}
                     fill
@@ -303,7 +311,7 @@ export function VideoManager() {
                   onCheckedChange={(checked) => {
                     setValue("is_home_featured", checked)
                     if (!checked) {
-                      setValue("home_display_section", undefined)
+                      setValue("home_display_section", null)
                     }
                   }}
                 />
@@ -313,7 +321,7 @@ export function VideoManager() {
               {watchedHomeSection && (
                 <div className="space-y-2">
                   <Label>Home Section</Label>
-                  <Select onValueChange={(value) => setValue("home_display_section", value as any)}>
+                  <Select onValueChange={(value) => setValue("home_display_section", value as "hero" | "top" | "bottom" | null)}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select section" />
                     </SelectTrigger>

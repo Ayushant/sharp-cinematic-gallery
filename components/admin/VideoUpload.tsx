@@ -2,7 +2,6 @@
 "use client"
 
 import React from "react"
-
 import { useState } from "react"
 import { Play, Youtube } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -20,12 +19,12 @@ import { useVideoMutations } from "@/hooks/useVideos"
 
 const videoSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  description: z.string().optional().transform(val => val || null),
+  description: z.string().optional(),
   youtube_url: z.string().url("Please enter a valid YouTube URL"),
   category_id: z.string().min(1, "Category is required"),
   is_featured: z.boolean().default(false),
   is_home_featured: z.boolean().default(false),
-  home_display_section: z.enum(["hero", "top", "bottom"]).optional().transform(val => val || null),
+  home_display_section: z.enum(["hero", "top", "bottom"]).optional().nullable(),
 })
 
 type VideoForm = z.infer<typeof videoSchema>
@@ -47,6 +46,7 @@ export function VideoUpload() {
     defaultValues: {
       is_featured: false,
       is_home_featured: false,
+      home_display_section: null,
     },
   })
 
@@ -78,11 +78,13 @@ export function VideoUpload() {
 
       await createVideo.mutateAsync({
         ...data,
+        description: data.description || null,
         youtube_id: youtubeId,
         display_order: 0,
         view_count: 0,
         custom_thumbnail_url: null,
         duration: null,
+        home_display_section: data.is_home_featured ? data.home_display_section : null,
       })
 
       reset()
@@ -178,7 +180,7 @@ export function VideoUpload() {
                 onCheckedChange={(checked) => {
                   setValue("is_home_featured", checked)
                   if (!checked) {
-                    setValue("home_display_section", undefined)
+                    setValue("home_display_section", null)
                   }
                 }}
               />
@@ -188,7 +190,7 @@ export function VideoUpload() {
             {watchedHomeSection && (
               <div className="space-y-2">
                 <Label>Home Section</Label>
-                <Select onValueChange={(value) => setValue("home_display_section", value as any)}>
+                <Select onValueChange={(value) => setValue("home_display_section", value as "hero" | "top" | "bottom" | null)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select section" />
                   </SelectTrigger>

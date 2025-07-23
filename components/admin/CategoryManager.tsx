@@ -2,27 +2,24 @@
 "use client"
 
 import { useState } from "react"
-import { motion } from "framer-motion"
-import { Plus, Edit, Trash2, FolderOpen } from "lucide-react"
+import { Plus, Edit, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import { LoadingSpinner } from "@/components/common/LoadingSpinner"
 import { EmptyState } from "@/components/common/EmptyState"
-import { useCategories, useCategoryMutations } from "@/hooks/useCategories"
-import type { Category } from "@/lib/supabase"
+import { useCategories, useCategoryMutations, type Category } from "@/hooks/useCategories"
 
 const categorySchema = z.object({
-  name: z.string().min(1, "Category name is required"),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
   slug: z.string().min(1, "Slug is required"),
-  description: z.string().optional().transform(val => val || null),
 })
 
 type CategoryForm = z.infer<typeof categorySchema>
@@ -45,28 +42,33 @@ export function CategoryManager() {
     resolver: zodResolver(categorySchema),
   })
 
-  const watchedName = watch("name")
+  const nameValue = watch("name")
 
   // Auto-generate slug from name
   const generateSlug = (name: string) => {
     return name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
+      .replace(/^-+|-+$/g, "")
   }
 
   const onSubmit = async (data: CategoryForm) => {
     try {
+      const categoryData = {
+        ...data,
+        description: data.description || null,
+      }
+
       if (editingCategory) {
         await updateCategory.mutateAsync({
           id: editingCategory.id,
-          ...data,
+          ...categoryData,
         })
         setEditingCategory(null)
       } else {
         await createCategory.mutateAsync({
-          ...data,
-          display_order: (categories?.length || 0) + 1,
+          ...categoryData,
+          display_order: 0,
           is_active: true,
         })
         setIsCreateDialogOpen(false)
@@ -80,14 +82,12 @@ export function CategoryManager() {
   const handleEdit = (category: Category) => {
     setEditingCategory(category)
     setValue("name", category.name)
-    setValue("slug", category.slug)
     setValue("description", category.description || "")
+    setValue("slug", category.slug)
   }
 
   const handleDelete = async (categoryId: string) => {
-    if (!confirm("Are you sure you want to delete this category? This will also delete all photos in this category.")) {
-      return
-    }
+    if (!confirm("Are you sure you want to delete this category?")) return
 
     try {
       await deleteCategory.mutateAsync(categoryId)
@@ -102,10 +102,10 @@ export function CategoryManager() {
     setIsCreateDialogOpen(true)
   }
 
-  // Auto-update slug when name changes (only for new categories)
-  if (watchedName && !editingCategory) {
-    const newSlug = generateSlug(watchedName)
-    setValue("slug", newSlug)
+  // Auto-generate slug when name changes
+  if (nameValue && !editingCategory) {
+    const slug = generateSlug(nameValue)
+    setValue("slug", slug)
   }
 
   if (isLoading) {
@@ -121,7 +121,7 @@ export function CategoryManager() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Category Management</h2>
-          <p className="text-gray-600">Organize your photos into categories</p>
+          <p className="text-gray-600">Organize your content with categories</p>
         </div>
         <Button onClick={handleCreateNew} className="bg-purple-600 hover:bg-purple-700">
           <Plus className="w-4 h-4 mr-2" />
@@ -131,62 +131,53 @@ export function CategoryManager() {
 
       {categories && categories.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {categories.map((category, index) => (
-            <motion.div
-              key={category.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                      <FolderOpen className="w-5 h-5 text-purple-600" />
-                      <CardTitle className="text-lg">{category.name}</CardTitle>
-                    </div>
-                    <Badge variant="secondary">{category.photo_count || 0} photos</Badge>
+          {categories.map((category) => (
+            <Card key={category.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{category.name}</CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">/{category.slug}</p>
                   </div>
+                  <div className="flex gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEdit(category)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(category.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
                   {category.description && (
-                    <CardDescription className="line-clamp-2">{category.description}</CardDescription>
+                    <p className="text-sm text-gray-600 line-clamp-2">{category.description}</p>
                   )}
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
-                      <p>Slug: {category.slug}</p>
-                      <p>Order: {category.display_order}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEdit(category)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => handleDelete(category.id)}
-                        disabled={deleteCategory.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span>Order: {category.display_order}</span>
+                    <span className={`px-2 py-1 rounded-full ${
+                      category.is_active 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {category.is_active ? 'Active' : 'Inactive'}
+                    </span>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+                </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       ) : (
         <EmptyState
           title="No categories found"
-          description="Create your first category to start organizing your photos."
+          description="Create your first category to start organizing your content."
           actionLabel="Add Category"
           onAction={handleCreateNew}
-          icon={<FolderOpen className="w-12 h-12 text-gray-400" />}
         />
       )}
 
-      {/* Create/Edit Dialog */}
       <Dialog
         open={isCreateDialogOpen || !!editingCategory}
         onOpenChange={(open) => {
@@ -201,9 +192,7 @@ export function CategoryManager() {
           <DialogHeader>
             <DialogTitle>{editingCategory ? "Edit Category" : "Create New Category"}</DialogTitle>
             <DialogDescription>
-              {editingCategory
-                ? "Update category information and settings"
-                : "Add a new category to organize your photos"}
+              {editingCategory ? "Update category information" : "Add a new category to organize your content"}
             </DialogDescription>
           </DialogHeader>
 
@@ -213,7 +202,7 @@ export function CategoryManager() {
               <Input
                 id="name"
                 {...register("name")}
-                placeholder="e.g., Wedding Photography"
+                placeholder="Enter category name"
                 className={errors.name ? "border-red-500" : ""}
               />
               {errors.name && <p className="text-sm text-red-500">{errors.name.message}</p>}
@@ -224,13 +213,11 @@ export function CategoryManager() {
               <Input
                 id="slug"
                 {...register("slug")}
-                placeholder="e.g., wedding-photography"
+                placeholder="category-slug"
                 className={errors.slug ? "border-red-500" : ""}
               />
               {errors.slug && <p className="text-sm text-red-500">{errors.slug.message}</p>}
-              <p className="text-xs text-gray-500">
-                Used in URLs. Only lowercase letters, numbers, and hyphens allowed.
-              </p>
+              <p className="text-xs text-gray-500">This will be used in URLs (e.g., /category/your-slug)</p>
             </div>
 
             <div className="space-y-2">
@@ -238,7 +225,7 @@ export function CategoryManager() {
               <Textarea
                 id="description"
                 {...register("description")}
-                placeholder="Brief description of this category..."
+                placeholder="Brief description of this category"
                 rows={3}
               />
             </div>
