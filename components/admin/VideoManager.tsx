@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -27,9 +26,9 @@ const videoSchema = z.object({
   youtube_url: z.string().url("Please enter a valid YouTube URL"),
   category_id: z.string().min(1, "Category is required"),
   custom_thumbnail_url: z.string().url().optional().or(z.literal("")),
-  is_featured: z.boolean().default(false),
-  is_home_featured: z.boolean().default(false),
-  home_display_section: z.enum(["hero", "top", "bottom"]).optional().nullable(),
+  is_featured: z.boolean(),
+  is_home_featured: z.boolean(),
+  home_display_section: z.enum(["hero", "top", "bottom"]).nullable(),
 })
 
 type VideoForm = z.infer<typeof videoSchema>
@@ -321,7 +320,7 @@ export function VideoManager() {
               {watchedHomeSection && (
                 <div className="space-y-2">
                   <Label>Home Section</Label>
-                  <Select onValueChange={(value) => setValue("home_display_section", value as "hero" | "top" | "bottom" | null)}>
+                  <Select onValueChange={(value) => setValue("home_display_section", value as "hero" | "top" | "bottom")}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select section" />
                     </SelectTrigger>

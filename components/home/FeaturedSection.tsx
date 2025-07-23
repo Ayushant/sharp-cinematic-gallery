@@ -17,7 +17,7 @@ export function FeaturedSection({ section, title, description }: FeaturedSection
           <h2 className="text-4xl font-bold text-gray-900 mb-4">{title}</h2>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">{description}</p>
         </div>
-        <FeaturedGallery />
+        <FeaturedGallery section={section} title={title} description={description} />
       </div>
     </section>
   )
